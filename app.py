@@ -220,7 +220,7 @@ if demo_df is not None and model is not None:
         return 'color: #f59e0b' # yellow
         
     display_cols = ['AI_Detection', 'proto', 'service', 'duration', 'orig_pkts', 'resp_pkts', 'orig_bytes', 'resp_bytes']
-    st.dataframe(demo_df[display_cols].style.applymap(color_threat, subset=['AI_Detection']), use_container_width=True, height=300)
+    st.dataframe(demo_df[display_cols].style.map(color_threat, subset=['AI_Detection']), use_container_width=True, height=300)
 
 elif demo_df is None:
     # Empty State Dashboard
