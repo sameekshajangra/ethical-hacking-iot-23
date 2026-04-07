@@ -177,7 +177,7 @@ def render_dashboard(demo_df):
                                           color_continuous_scale=[[0, '#22c55e'], [1, '#ef4444']])
             fig_sankey.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#f8fafc', margin=dict(t=30, b=0, l=0, r=0))
             fig_sankey.update_coloraxes(showscale=False)
-            st.plotly_chart(fig_sankey, use_container_width=True)
+            st.plotly_chart(fig_sankey, use_container_width=True, key=f"sankey_{len(demo_df)}")
         else:
             st.warning("Generate Dataset with IP tracking first.")
             
@@ -189,7 +189,7 @@ def render_dashboard(demo_df):
         imp_df = pd.DataFrame({'Feature': np.array(model_columns)[indices], 'Importance': importances[indices]})
         fig_imp = px.bar(imp_df, x='Importance', y='Feature', orientation='h', color='Importance', color_continuous_scale='Purpor')
         fig_imp.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#f8fafc', margin=dict(t=0, b=0, l=0, r=0))
-        st.plotly_chart(fig_imp, use_container_width=True)
+        st.plotly_chart(fig_imp, use_container_width=True, key=f"imp_{len(demo_df)}")
         
     with tab3:
         chart_col1, chart_col2 = st.columns([1, 1])
@@ -198,11 +198,11 @@ def render_dashboard(demo_df):
             threat_counts.columns = ['Threat', 'Count']
             fig1 = px.pie(threat_counts, names='Threat', values='Count', hole=0.6, color='Threat', color_discrete_map=color_map)
             fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#f8fafc', margin=dict(t=10, b=0, l=0, r=0))
-            st.plotly_chart(fig1, use_container_width=True)
+            st.plotly_chart(fig1, use_container_width=True, key=f"pie_{len(demo_df)}")
         with chart_col2:
             fig2 = px.scatter(demo_df, x='orig_bytes', y='resp_bytes', color='AI_Detection', log_x=True, log_y=True, color_discrete_map=color_map, opacity=0.7)
             fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#f8fafc', margin=dict(t=10, b=0, l=0, r=0))
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, use_container_width=True, key=f"scatter_{len(demo_df)}")
             
     st.markdown("### 🚨 Threat Log (Live Feed)")
     def color_threat(val):
