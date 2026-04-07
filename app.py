@@ -59,34 +59,12 @@ st.markdown("""
         margin-bottom: 0rem;
         padding-bottom: 0rem;
     }
-    
-    /* Glowing status badges */
-    .badge-mirai { background-color: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; padding: 4px 10px; border-radius: 20px; font-weight: bold;}
-    .badge-ddos { background-color: rgba(249, 115, 22, 0.2); border: 1px solid #f97316; color: #fdba74; padding: 4px 10px; border-radius: 20px; font-weight: bold;}
-    .badge-scan { background-color: rgba(234, 179, 8, 0.2); border: 1px solid #eab308; color: #fde047; padding: 4px 10px; border-radius: 20px; font-weight: bold;}
-    .badge-benign { background-color: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; color: #86efac; padding: 4px 10px; border-radius: 20px; font-weight: bold;}
-    
-    /* Buttons */
-    .stButton>button {
-        background: linear-gradient(to right, #3b82f6, #8b5cf6);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        padding: 0.5rem 2rem;
-        transition: all 0.3s;
-    }
-    .stButton>button:hover {
-        box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
-        transform: scale(1.02);
-        color: white;
-    }
 </style>
 """, unsafe_allow_html=True)
 
 # Application Header
 st.markdown('<h1 class="main-title">IoT-23 Network Sentinel <span style="font-size:1.5rem">🛡️</span></h1>', unsafe_allow_html=True)
-st.markdown("<p style='color: #94a3b8; font-size: 1.1rem;'>Real-time AI-Powered Botnet Detection Dashboard based on the Aposemat IoT-23 Dataset.</p>", unsafe_allow_html=True)
+st.markdown("<p style='color: #94a3b8; font-size: 1.1rem;'>Enterprise SOC Dashboard: AI-Powered Botnet Detection and Topology Mapping.</p>", unsafe_allow_html=True)
 st.divider()
 
 # Load Models
@@ -120,46 +98,43 @@ with st.sidebar:
     st.markdown("---")
     
     upload_file = st.file_uploader("Upload Network Traffic (CSV)", type=['csv'])
+    
     if st.button("Load Sample Data"):
         st.session_state['use_sample'] = True
     else:
         if 'use_sample' not in st.session_state:
             st.session_state['use_sample'] = False
             
+    live_simulation = st.toggle("🔴 Enable Live Simulation Mode", value=False, help="Streams traffic onto the screen slowly.")
+    
     st.markdown("---")
     st.markdown("<small>Designed for Ethical Hacking Grp Project</small>", unsafe_allow_html=True)
 
 # Main Logic
-demo_df = None
+full_df = None
 
 if upload_file is not None:
-    demo_df = pd.read_csv(upload_file, keep_default_na=False)
+    full_df = pd.read_csv(upload_file, keep_default_na=False)
 elif st.session_state['use_sample']:
     try:
-        demo_df = pd.read_csv('iot23_sample.csv', keep_default_na=False).sample(n=1000, random_state=np.random.randint(0,10000))
-        st.info("Loaded 1,000 random network flows from the sample dataset.")
+        full_df = pd.read_csv('iot23_sample.csv', keep_default_na=False).sample(n=200, random_state=np.random.randint(0,10000))
+        st.info("Loaded random network flows from the sample dataset.")
     except:
         st.warning("Sample dataset not found. Run generate_dataset.py first.")
 
-if demo_df is not None and model is not None:
+def render_dashboard(demo_df):
     
-    # Simulate processing delay for effect
-    with st.spinner('Analyzing network patterns via Random Forest...'):
-        time.sleep(1)
-        
-    X_inference = demo_df.drop(columns=['label', 'detailed_label'], errors='ignore')
+    X_inference = demo_df.drop(columns=['label', 'detailed_label', 'src_ip', 'dst_ip'], errors='ignore')
     
     # Preprocess
     categorical_cols = ['proto', 'service', 'conn_state']
     X_processed = pd.get_dummies(X_inference, columns=[col for col in categorical_cols if col in X_inference.columns])
     
-    # Align columns
     for col in model_columns:
         if col not in X_processed.columns:
             X_processed[col] = 0
     X_processed = X_processed[model_columns]
     
-    # Scale
     numerical_cols = ['duration', 'orig_bytes', 'resp_bytes', 'orig_pkts', 'resp_pkts', 'orig_p', 'resp_p']
     X_processed[numerical_cols] = scaler.transform(X_processed[numerical_cols])
     
@@ -177,56 +152,83 @@ if demo_df is not None and model is not None:
     
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("Total Flows Analyzed", f"{total_flows:,}")
-    with col2: st.metric("Malicious Flows Detected", f"{malicious:,}", delta=f"{malicious/total_flows*100:.1f}%", delta_color="inverse")
+    with col2: st.metric("Threats Blocked", f"{malicious:,}", delta=f"{malicious/max(1, total_flows)*100:.1f}%", delta_color="inverse")
     with col3: st.metric("Mirai Botnet Traces", f"{mirai:,}")
     with col4: st.metric("Clean Flows", f"{benign:,}", delta="Safe", delta_color="normal")
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Charts
-    chart_col1, chart_col2 = st.columns([1, 1])
+    # Topology and Visuals
+    tab1, tab2, tab3 = st.tabs(["🌐 Threat Topology", "🧠 AI Explainability", "📊 Raw Visuals"])
     
-    with chart_col1:
-        st.markdown("### 📊 Threat Distribution")
-        threat_counts = demo_df['AI_Detection'].value_counts().reset_index()
-        threat_counts.columns = ['Threat', 'Count']
-        
-        # Determine colors based on threat
-        color_map = {'None': '#22c55e', 'Mirai': '#ef4444', 'C&C': '#f97316', 'PartOfAHorizontalPortScan': '#eab308', 'DDoS': '#dc2626'}
-        
-        fig1 = px.pie(threat_counts, names='Threat', values='Count', hole=0.6, 
-                     color='Threat', color_discrete_map=color_map)
-        fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                          font_color='#f8fafc', showlegend=True, margin=dict(t=30, b=0, l=0, r=0))
-        # Add glowing effect to pie
-        fig1.update_traces(marker=dict(line=dict(color='#000000', width=2)))
-        st.plotly_chart(fig1, use_container_width=True)
-        
-    with chart_col2:
-        st.markdown("### 📡 Traffic Volume Features (Bytes)")
-        # Plotly scatter for bytes
-        fig2 = px.scatter(demo_df, x='orig_bytes', y='resp_bytes', color='AI_Detection', log_x=True, log_y=True,
-                          hover_data=['proto', 'orig_p', 'resp_p'], color_discrete_map=color_map, opacity=0.7)
-        fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                           font_color='#f8fafc', margin=dict(t=30, b=0, l=0, r=0))
-        st.plotly_chart(fig2, use_container_width=True)
-        
-    st.markdown("### 🚨 Threat Log (Live Feed)")
-    
-    # Aesthetic rendering for dataframe
-    def color_threat(val):
-        if val == 'None': return 'color: #4ade80' # green
-        if val == 'Mirai': return 'color: #ef4444; font-weight: bold' # red
-        return 'color: #f59e0b' # yellow
-        
-    display_cols = ['AI_Detection', 'proto', 'service', 'duration', 'orig_pkts', 'resp_pkts', 'orig_bytes', 'resp_bytes']
-    st.dataframe(demo_df[display_cols].style.map(color_threat, subset=['AI_Detection']), use_container_width=True, height=300)
+    color_map = {'None': '#22c55e', 'Mirai': '#ef4444', 'C&C': '#f97316', 'PartOfAHorizontalPortScan': '#eab308', 'DDoS': '#dc2626'}
 
-elif demo_df is None:
-    # Empty State Dashboard
+    with tab1:
+        st.markdown("### 🕸️ Network Flow Map (Parallel Categories)")
+        st.markdown("<small>Tracing connection sources through identified protocols to victim destinations.</small>", unsafe_allow_html=True)
+        if 'src_ip' in demo_df.columns:
+            # Drop very rare IPS just to keep the chart clean, keep top ones
+            top_src = demo_df['src_ip'].value_counts().nlargest(10).index
+            filtered = demo_df[demo_df['src_ip'].isin(top_src)]
+            
+            fig_sankey = px.parallel_categories(filtered[['src_ip', 'proto', 'AI_Detection', 'dst_ip']], 
+                                          labels={'src_ip': 'Source IP', 'proto': 'Protocol', 'AI_Detection': 'AI Finding', 'dst_ip': 'Destination IP'},
+                                          color=filtered['AI_Detection'].map({'None': 0, 'Mirai': 1, 'C&C': 1, 'PartOfAHorizontalPortScan': 1, 'DDoS': 1}),
+                                          color_continuous_scale=[[0, '#22c55e'], [1, '#ef4444']])
+            fig_sankey.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#f8fafc', margin=dict(t=30, b=0, l=0, r=0))
+            fig_sankey.update_coloraxes(showscale=False)
+            st.plotly_chart(fig_sankey, use_container_width=True)
+        else:
+            st.warning("Generate Dataset with IP tracking first.")
+            
+    with tab2:
+        st.markdown("### 🤖 Model Decision Logic (Feature Importances)")
+        st.markdown("<small>Which telemetry columns does the Random Forest weigh the heaviest to detect attacks?</small>", unsafe_allow_html=True)
+        importances = model.feature_importances_
+        indices = np.argsort(importances)[-10:] # Top 10
+        imp_df = pd.DataFrame({'Feature': np.array(model_columns)[indices], 'Importance': importances[indices]})
+        fig_imp = px.bar(imp_df, x='Importance', y='Feature', orientation='h', color='Importance', color_continuous_scale='Purpor')
+        fig_imp.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#f8fafc', margin=dict(t=0, b=0, l=0, r=0))
+        st.plotly_chart(fig_imp, use_container_width=True)
+        
+    with tab3:
+        chart_col1, chart_col2 = st.columns([1, 1])
+        with chart_col1:
+            threat_counts = demo_df['AI_Detection'].value_counts().reset_index()
+            threat_counts.columns = ['Threat', 'Count']
+            fig1 = px.pie(threat_counts, names='Threat', values='Count', hole=0.6, color='Threat', color_discrete_map=color_map)
+            fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#f8fafc', margin=dict(t=10, b=0, l=0, r=0))
+            st.plotly_chart(fig1, use_container_width=True)
+        with chart_col2:
+            fig2 = px.scatter(demo_df, x='orig_bytes', y='resp_bytes', color='AI_Detection', log_x=True, log_y=True, color_discrete_map=color_map, opacity=0.7)
+            fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#f8fafc', margin=dict(t=10, b=0, l=0, r=0))
+            st.plotly_chart(fig2, use_container_width=True)
+            
+    st.markdown("### 🚨 Threat Log (Live Feed)")
+    def color_threat(val):
+        if val == 'None': return 'color: #4ade80'
+        if val in ['Mirai', 'DDoS']: return 'color: #ef4444; font-weight: bold'
+        return 'color: #f59e0b'
+        
+    display_cols = ['src_ip', 'dst_ip', 'AI_Detection', 'proto', 'service', 'duration', 'orig_pkts', 'orig_bytes']
+    valid_cols = [c for c in display_cols if c in demo_df.columns]
+    
+    st.dataframe(demo_df[valid_cols].iloc[::-1].style.map(color_threat, subset=['AI_Detection']), use_container_width=True, height=250)
+
+
+if full_df is not None and model is not None:
+    if live_simulation:
+        placeholder = st.empty()
+        for i in range(10, len(full_df) + 1, 10):
+            with placeholder.container():
+                render_dashboard(full_df.iloc[:i].copy())
+            time.sleep(0.5)
+    else:
+        render_dashboard(full_df)
+elif full_df is None:
     st.markdown("""
     <div style='text-align: center; padding: 4rem; background: rgba(30, 41, 59, 0.4); border-radius: 20px; border: 1px dashed rgba(148, 163, 184, 0.3)'>
         <h2 style='color: #475569 !important'>System Standby</h2>
-        <p style='color: #94a3b8'>Upload network logs from the sidebar or click "Load Sample Data" to begin threat analysis.</p>
+        <p style='color: #94a3b8'>Upload network logs from the sidebar or click "Load Sample Data" to begin SOC analysis.</p>
     </div>
     """, unsafe_allow_html=True)

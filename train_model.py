@@ -17,8 +17,8 @@ def train_model():
     # Drop detailed label as we're doing binary classification for the main model, or predicting the attack type
     # Let's actually predict the detailed label because it's more impressive!
     df = df.drop(columns=['label']) # Drop binary label
-    y = df['detailed_label']
-    X = df.drop(columns=['detailed_label'])
+    y = df['detailed_label'].fillna('None').astype(str)
+    X = df.drop(columns=['detailed_label', 'src_ip', 'dst_ip'], errors='ignore')
 
     # Convert categorical to numerical
     print("Preprocessing data...")
