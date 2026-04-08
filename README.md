@@ -1,4 +1,4 @@
-# IoT-23 Botnet Detection Sentinel 🛡️
+# IoT-23 Intrusion Detection System (IDS) 🛡️
 
 This project implements an **AI-powered Security Operations Center (SOC) Dashboard** that detects IoT botnets (like Mirai) using the IoT-23 dataset.
 

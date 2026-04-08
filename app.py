@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import time
 
 # Must be the first Streamlit command
-st.set_page_config(page_title="IoT-23 Sentinel", page_icon="🛡️", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="IoT-23 IDS Sentinel", page_icon="🛡️", layout="wide", initial_sidebar_state="expanded")
 
 # Custom UI Injection for that "WOW" factor
 st.markdown("""
@@ -63,8 +63,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Application Header
-st.markdown('<h1 class="main-title">IoT-23 Network Sentinel <span style="font-size:1.5rem">🛡️</span></h1>', unsafe_allow_html=True)
-st.markdown("<p style='color: #94a3b8; font-size: 1.1rem;'>Enterprise SOC Dashboard: AI-Powered Botnet Detection and Topology Mapping.</p>", unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">IoT-23 Intrusion Detection System <span style="font-size:1.5rem">🛡️</span></h1>', unsafe_allow_html=True)
+st.markdown("<p style='color: #94a3b8; font-size: 1.1rem;'>AI-Powered Network IDS: Real-time Threat Intelligence and Botnet Analysis.</p>", unsafe_allow_html=True)
 st.divider()
 
 # Load Models
